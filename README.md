@@ -10,7 +10,7 @@ This project combines a **conversational Telegram assistant** with an **autonomo
 
 ## 🎥 Demo
 
-A short demo video showing the full user flow (conversation → subscription → automatic alert) is available here: **https://drive.google.com/file/d/191bBKl15RpwBfAnyQ0dPQ3-9532H1NYG/view?usp=sharing**
+A short demo video showing the full user flow (conversation → subscription → automatic alert) is available here: **[https://drive.google.com/file/d/191bBKl15RpwBfAnyQ0dPQ3-9532H1NYG/view?usp=sharing]**
 
 ---
 
@@ -106,3 +106,85 @@ Most heat-safety tools stop at "here's the current temperature." This project go
 - Closing the loop with **proactive monitoring** — the system reaches out the moment conditions become dangerous, instead of waiting for the user to ask.
 
 Built end-to-end for the FortyGuard Hackathon.
+
+---
+
+## 📡 Sample FortyGuard API Request & Response
+
+Here's a real request made from the `My_Sub-workflow.json` sub-workflow, and the actual response returned by the FortyGuard API for a location in Cairo, Egypt:
+
+**Request** — `POST https://api.fortyguard.com/v1/env_params`
+```json
+{
+  "latitude": 30.058376,
+  "longitude": 31.326881,
+  "temperature": 25.7,
+  "date_time": {
+    "filter_type": 1,
+    "start_date": "2026-08-29",
+    "start_time": "00:00"
+  }
+}
+```
+
+**Response** — `GET https://api.fortyguard.com/v1/status/{activity_id}`
+```json
+{
+  "error": false,
+  "status_code": 200,
+  "message": "Completed",
+  "data": {
+    "activity_id": "0c8007bc-16ef-414b-b2fa-881b3803f9eb",
+    "status": "Completed",
+    "result": {
+      "metadata": {
+        "timezone": "GMT+2",
+        "timezone_offset_hours": 2,
+        "time_range": {
+          "start": "2026-08-29T00:00:00+02:00",
+          "end": "2026-08-29T00:00:00+02:00",
+          "interval": "1h",
+          "count": 1
+        }
+      },
+      "locations": [
+        {
+          "lat": 30.0625,
+          "lon": 31.3125,
+          "elevation": 61,
+          "temperature": 25.7,
+          "parameters": {
+            "heat_index_celsius": [26.7],
+            "apparent_temperature_celsius": [31.7],
+            "relative_humidity_percent": [63.7],
+            "precipitation_mm": [0],
+            "cloud_cover_octas": [0],
+            "wet_bulb_temperature_celsius": [23.4],
+            "air_quality:idx": [73.6],
+            "air_quality_pm2p5:idx": [73.6],
+            "air_quality_pm10:idx": [33.2],
+            "air_quality_no2:idx": [7.6],
+            "aqi_us_co": [1.6],
+            "air_quality_o3:idx": [41.5],
+            "air_quality_so2:idx": [16.3],
+            "methane_ppb": [2213.7],
+            "co2_ppm": [444]
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+The bot extracts `apparent_temperature_celsius` (the "feels-like" value) as the primary number shown to users and used for alert threshold comparisons, alongside humidity and air quality for the full safety report.
+
+---
+
+## ⚠️ What doesn't work yet / known limitations
+
+- **No standalone web demo:** this project is Telegram-native by design (a conversational bot + a background monitoring workflow), so there is no separate web URL to click — it needs to be run as n8n workflows connected to a Telegram bot. See setup steps above.
+- **Alert follow-up bot uses a lightweight LLM:** the alert bot's free-tier model sometimes gives a generic greeting instead of a context-aware answer on the very first follow-up message after an alert, before conversation memory "warms up." A second message in the same conversation is handled correctly.
+- **No spam-prevention beyond "still rising" check:** the monitoring workflow currently avoids repeat alerts by only firing when the temperature is both above the safety threshold *and* higher than the last recorded reading. It does not yet implement a fixed cooldown window (e.g. "don't alert the same person more than once per hour").
+- **Single shared Google Sheet as the subscriber database:** works well for a hackathon-scale demo, but would need to move to a proper database for production-scale usage.
+- **Manual credential setup required:** as noted above, all API keys and OAuth credentials must be reconnected manually after importing the workflows — this is an n8n export limitation, not a design choice.
