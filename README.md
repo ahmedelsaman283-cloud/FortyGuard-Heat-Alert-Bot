@@ -10,7 +10,7 @@ This project combines a **conversational Telegram assistant** with an **autonomo
 
 ## 🎥 Demo
 
-A short demo video showing the full user flow (conversation → subscription → automatic alert) is available here: **[https://drive.google.com/file/d/191bBKl15RpwBfAnyQ0dPQ3-9532H1NYG/view?usp=sharing]**
+A short demo video showing the full user flow (conversation → subscription → automatic alert) is available here: **[https://drive.google.com/file/d/1uZ8bOzBfVvpRrXEncEvbPiryduklQQQQ/view?usp=drivesdk]**
 
 ---
 
