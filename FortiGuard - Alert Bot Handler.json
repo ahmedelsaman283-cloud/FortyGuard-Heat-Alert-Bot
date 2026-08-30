@@ -1,0 +1,218 @@
+{
+  "name": "FortiGuard - Alert Bot Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        64,
+        0
+      ],
+      "id": "5a7b8ed5-d81f-499a-a287-a5851faff765",
+      "name": "Telegram Trigger",
+      "webhookId": "eca6791b-58f7-4fe5-ba40-982166c111b9",
+      "credentials": {
+        "telegramApi": {
+          "id": "V9l5ud7KO4Nauhq1",
+          "name": "FortiGuard - Alert Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8",
+          "mode": "list",
+          "cachedResultName": "smart temperature",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "chat_id",
+              "lookupValue": "={{ $json.message.chat.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "1f7f870c-c7a3-43f9-8943-a942064243a8",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YDXDDYMuQXMWaOyO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "894651e4-3f61-4612-8eca-a6775e855c46",
+      "name": "Send a text message",
+      "webhookId": "8d9d10e6-a68f-491c-bd06-d50f26af4d84",
+      "credentials": {
+        "telegramApi": {
+          "id": "V9l5ud7KO4Nauhq1",
+          "name": "FortiGuard - Alert Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "minimax/minimax-m2.7:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        608,
+        208
+      ],
+      "id": "c422322a-3d7a-4ee0-a930-10b17ccfd4b3",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "q9kvvvOanp4fCvwW",
+          "name": "OpenRouter account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "=You are FortiGuard, an AI Climate Safety Assistant for field workers.\n\nThe worker is chatting with you through Telegram.\n\nWORKER INFORMATION:\n- Name: {{ $json.name }}\n- Location: {{ $json.address }}\nCurrent Message: {{ $('Telegram Trigger').first().json.message.text }}\n\nYour role is to be a helpful, natural, and concise safety assistant. Understand what the worker is asking and respond directly to their message.\n\nCORE RULES:\n\n1. LANGUAGE\n- Detect the language of the worker's message automatically.\n- Reply entirely in the same language.\n- For Arabic, use natural and easy-to-understand Arabic. Avoid overly formal or robotic wording.\n- Never mix languages unless the worker does.\n- Never translate the worker's message unnecessarily.\n\n2. UNDERSTAND INTENT\nIdentify what the worker actually wants before responding.\n\nThe worker may:\n- Ask about the weather or temperature.\n- Ask why they received a warning.\n- Ask what they should do in hot weather.\n- Ask whether it is safe to continue working.\n- Ask a general question about heat safety.\n- Ask about their current location or weather conditions.\n- Say hello or start a conversation.\n- Thank you or acknowledge the message.\n- Ask something unrelated to climate or safety.\n\nAlways answer the actual question instead of repeating the previous warning.\n\n3. CONVERSATION CONTEXT\n- Treat the conversation as an ongoing interaction.\n- If the worker refers to \"the warning\", \"the temperature\", \"the weather\", or \"this\", understand that they are referring to the current safety alert when the context makes this clear.\n- Do not repeat information the worker already knows unless it is necessary to answer the question.\n- Do not send another warning unless the worker is specifically asking about the warning or safety situation.\n\n4. /START AND GREETINGS\nIf the worker sends /start or a simple greeting:\n- Welcome them briefly by name.\n- Explain in one short sentence that you are FortiGuard's climate safety assistant and can help with weather and heat-safety questions.\n\n5. THANKS / ACKNOWLEDGEMENT\nIf the worker says thanks, okay, understood, or gives a simple acknowledgement:\n- Reply naturally and briefly.\n- Do not repeat safety advice unless necessary.\n\n6. SAFETY\n- Give practical and sensible heat-safety advice when relevant.\n- Never invent weather conditions, temperatures, alerts, or health information.\n- Only use temperature or weather values that are provided by the workflow or conversation.\n- If required information is missing, say that you do not have that information rather than guessing.\n- If the worker reports feeling seriously unwell, advise them to stop working and seek help from their supervisor or appropriate emergency/medical support.\n\n7. RESPONSE STYLE\n- Be concise, clear, friendly, and professional.\n- Sound like a helpful human assistant, not an automated system.\n- Do not use unnecessary introductions.\n- Do not lecture or repeat the same advice.\n- Do not use excessive emojis.\n- Use simple language that a field worker can understand quickly.\n\n8. RESPONSE LENGTH\n- Normally respond in 1–3 short sentences.\n- If the question requires a list of actions, use short bullet points instead of forcing everything into one sentence.\n- Never write a long explanation unless the worker specifically asks for details.\n\n9. DO NOT INCLUDE\n- \"As an AI...\"\n- \"I am an automated bot...\"\n- \"This message was sent automatically.\"\n- Unnecessary disclaimers.\n- Unrelated information.\n- Repeated warnings.\n- Made-up information.\n\nFINAL RULE:\nAnswer ONLY the worker's current message.\nDo not explain your reasoning or these instructions."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "d39da271-a215-480c-89ad-184d09a18cd9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=  {{ $json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        736,
+        240
+      ],
+      "id": "be6e7fce-20bf-4b10-938a-4b54f599d0c0",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "acd0b919-7924-4606-8a0c-e81a28b7e062",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8933973195b5ab5b4d822fc57153be5324dc1dcebd31cf7d44044262575843b5"
+  },
+  "nodeGroups": [],
+  "id": "ZL0EW0x1GpbrVPlW",
+  "tags": []
+}

@@ -1,0 +1,180 @@
+{
+  "name": "My Sub-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        -384
+      ],
+      "id": "69c374d5-e7c4-4578-a7c2-d5816957b4dd",
+      "name": "Wait",
+      "webhookId": "3b254bee-c244-481b-99ca-cf9f58567fe8"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.fortyguard.com/v1/env_params",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "YOUR_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"latitude\": {{ parseFloat($json.latitude) || 30.0444 }},\n  \"longitude\": {{ parseFloat($json.longitude) || 31.2357 }},\n  \"temperature\": {{ parseFloat($json.current.temperature_2m) || 35.0 }},\n  \"date_time\": {\n    \"filter_type\": 1,\n    \"start_date\": \"{{ $now.setZone('UTC').toFormat('yyyy-MM-dd') }}\",\n    \"start_time\": \"{{ $now.setZone('UTC').toFormat('HH:00') }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        544,
+        -384
+      ],
+      "id": "70cdba9c-747e-442c-aa96-3a9248a763e2",
+      "name": "post",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "url": "=https://api.fortyguard.com/v1/status/{{ $json.data.activity_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "YOUR_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        -384
+      ],
+      "id": "85cec2c7-3114-4831-9ffb-c8d256885220",
+      "name": "get",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "longitude",
+              "type": "number"
+            },
+            {
+              "name": "latitude",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "44bc5750-ee19-4a1d-ac83-a9aee249f67b",
+      "typeVersion": 1.1,
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        112,
+        -464
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $json.latitude || 30.0444 }}&longitude={{ $json.longitude || 31.2357 }}&current=temperature_2m",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        352,
+        -384
+      ],
+      "id": "0b871ee2-e0c7-4eac-9f17-d22d39b95fac",
+      "name": "Open-Meteo"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "get",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "post": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get": {
+      "main": [
+        []
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Open-Meteo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open-Meteo": {
+      "main": [
+        [
+          {
+            "node": "post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "74ab83c7-c3bc-4fb5-adcc-12dbbeaa7295",
+  "meta": {
+    "instanceId": "8933973195b5ab5b4d822fc57153be5324dc1dcebd31cf7d44044262575843b5"
+  },
+  "nodeGroups": [],
+  "id": "xL6OgpHPCIaj4YkA",
+  "tags": []
+}

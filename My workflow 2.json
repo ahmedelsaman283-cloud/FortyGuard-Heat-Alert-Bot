@@ -1,0 +1,676 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -224,
+        -240
+      ],
+      "id": "55ba36c5-f23d-4dfd-a34f-88055a59a29a",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8",
+          "mode": "list",
+          "cachedResultName": "smart temperature",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        -224
+      ],
+      "id": "75303c90-eab6-4611-93c3-1e506fd4593d",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YDXDDYMuQXMWaOyO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        304,
+        -192
+      ],
+      "id": "fab9aff4-ce36-43ff-9972-008e4612a39a",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "xL6OgpHPCIaj4YkA",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/xL6OgpHPCIaj4YkA",
+          "cachedResultName": "My Sub-workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "longitude": "={{ $json.longitude }}",
+            "latitude": "={{ $json.latitude }}"
+          },
+          "matchingColumns": [
+            "longitude"
+          ],
+          "schema": [
+            {
+              "id": "longitude",
+              "displayName": "longitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "latitude",
+              "displayName": "latitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        112
+      ],
+      "id": "ebe0ea5b-38ec-47eb-a5ff-536be6ca7c08",
+      "name": "Call 'My Sub-workflow'",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8f51b3ee-a7c1-4337-be0b-4f37b4cad93d",
+              "leftValue": "={{ $('Call \\'My Sub-workflow\\'').item.json.data?.result?.locations?.[0]?.parameters?.apparent_temperature_celsius?.[0] || $('Call \\'My Sub-workflow\\'').item.json.apparent_temperature || 0 }}",
+              "rightValue": "={{ Number(($('Loop Over Items').item.json.last_temperature || '0').toString().replace(',', '.')) }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "644c44af-317b-48ea-b6dc-7cd2f987a76b",
+              "leftValue": "= {{ $json.data?.result?.locations?.[0]?.parameters?.apparent_temperature_celsius?.[0] || $json.apparent_temperature || 0 }}",
+              "rightValue": 30,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "ec6a96fc-f6d1-4618-aa15-2ef02f80cfbd",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Worker Name: {{ $json.name }}\nWork Area: {{ $json.address }}\nCurrent Temperature: {{ $json.apparent_temperature }}°C",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are FortiGuard, an AI Heat Safety Assistant for field workers.\n\nYour ONLY task is to generate a short, natural, and professional heat warning message based on the worker information and current apparent temperature provided to you.\n\nThe message will be sent directly to the worker through Telegram, so it must feel like a real safety alert: clear, useful, direct, and not overly formal.\n\nRULES:\n\n1. LANGUAGE\n- Always respond entirely in the same language as the input.\n- If the input is Arabic, use natural and clear Modern Standard Arabic.\n- If the input is English, use natural and professional English.\n- If the input uses another language, respond in that language.\n- Never mix languages.\n- Never use robotic, literal, or awkward translations.\n\n2. DATA ACCURACY\n- Use the worker's name exactly as provided.\n- Use the apparent temperature exactly as provided.\n- Never change, calculate, round, estimate, or invent the temperature.\n- Never invent information about the worker or their location.\n\n3. LOCATION\n- Keep the location short and easy to understand.\n- When possible, keep only the Neighborhood and City.\n- Remove street numbers, postal/ZIP codes, coordinates, country names, building names, and unnecessary address details.\n- If only the city is available, use the city only.\n\n4. MESSAGE STYLE\n- Keep the warning short and direct.\n- Sound professional but natural.\n- Make it easy to understand within a few seconds.\n- Do not make the message dramatic, exaggerated, or frightening.\n- Avoid unnecessary formal language.\n\n5. SAFETY ACTIONS\n- Provide EXACTLY TWO practical safety actions.\n- Each action must be short and immediately actionable.\n- The actions should be relevant to heat exposure.\n- Use simple dash bullets.\n- Do not provide a third action.\n- Do not add safety advice outside the two bullets.\n\n6. EMOJIS\n- Use a maximum of TWO simple safety-related emojis.\n- Prefer ⚠️ and 🌡️.\n- Never use national flags.\n\n7. FORBIDDEN CONTENT\nNever include:\n- Greetings or unnecessary introductions\n- Explanations\n- Closing messages\n- Disclaimers\n- Hashtags\n- \"As an AI\"\n- \"Automated message\"\n- \"Sent automatically\"\n- Extra sections\n- Extra recommendations\n- Any text that is not part of the warning\n\nOUTPUT STRUCTURE:\n\nThe final message must contain ONLY these elements, in this order:\n\n1. A short heat-warning heading appropriate to the input language.\n2. One short sentence addressing the worker by name and stating the current apparent temperature and shortened location.\n3. EXACTLY TWO short safety actions using dash bullets.\n\nThe wording, labels, heading, and sentence structure must ALL be written in the same language as the input.\n\nExample structure for Arabic:\n⚠️ تنبيه حراري\n\nيا أحمد، الحرارة المحسوسة حاليًا 42°C في المعادي، القاهرة.\n\n- اشرب مياه وخد راحة في مكان مظلل.\n- قلل المجهود وأبلغ المشرف إذا شعرت بتعب أو دوخة.\n\nExample structure for English:\n⚠️ Heat Warning\n\nAhmed, the current apparent temperature is 42°C in Maadi, Cairo.\n\n- Drink water regularly and take breaks in the shade.\n- Reduce physical effort and inform your supervisor if you feel tired or dizzy.\n\nIMPORTANT:\nThe examples are ONLY examples of structure.\nDo NOT copy their language, wording, names, locations, temperatures, or actions.\nAlways generate the final message based ONLY on the actual input data.\n\nReturn ONLY the final warning message.\nDo not add anything before or after it."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1200,
+        -176
+      ],
+      "id": "d330a7d7-ca01-4b91-bcab-5782e92eae0e",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8",
+          "mode": "list",
+          "cachedResultName": "smart temperature",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "last_temperature": "=   {{ $('Code in JavaScript').first().json.apparent_temperature }}",
+            "chat_id": "={{ $('Code in JavaScript').first().json.chat_id.toString() }}"
+          },
+          "matchingColumns": [
+            "chat_id"
+          ],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "latitude",
+              "displayName": "latitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "longitude",
+              "displayName": "longitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_temperature",
+              "displayName": "last_temperature",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1824,
+        -448
+      ],
+      "id": "52827276-efed-444b-a28d-fa907d0986dd",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YDXDDYMuQXMWaOyO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        384
+      ],
+      "id": "038d855e-f7a2-4889-95c9-a433fa04f574",
+      "name": "Wait",
+      "webhookId": "8b365425-a8ec-40a6-b708-53433aa30a4a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const sheetRow = $('Loop Over Items').first().json;\nconst weatherData = $('Call \\'My Sub-workflow\\'').first().json;\n\nconst appTemp = weatherData?.data?.result?.locations?.[0]?.parameters?.apparent_temperature_celsius?.[0] \n             || weatherData?.apparent_temperature \n             || $json?.apparent_temperature;\n\nreturn [{\n  json: {\n    name: sheetRow.name,\n    address: sheetRow.address,\n    chat_id: sheetRow.chat_id,\n    apparent_temperature: appTemp\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -208
+      ],
+      "id": "a5af4d49-f990-4d9f-a95f-b6954f3dec60",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8",
+          "mode": "list",
+          "cachedResultName": "smart temperature",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "last_temperature": "={{ $('Call \\'My Sub-workflow\\'').item.json.data?.result?.locations?.[0]?.parameters?.apparent_temperature_celsius?.[0] || $('Call \\'My Sub-workflow\\'').item.json.apparent_temperature || 0 }}",
+            "chat_id": "={{ $('Loop Over Items').first().json.chat_id }}"
+          },
+          "matchingColumns": [
+            "chat_id"
+          ],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "latitude",
+              "displayName": "latitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "longitude",
+              "displayName": "longitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_temperature",
+              "displayName": "last_temperature",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1072,
+        112
+      ],
+      "id": "edad4aea-699b-4a48-897e-1ab413b90a37",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YDXDDYMuQXMWaOyO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Code in JavaScript').first().json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1648,
+        -96
+      ],
+      "id": "4883f8f2-1aee-49e9-a890-f8ce03230098",
+      "name": "Send a text message",
+      "webhookId": "d5580f7d-83ef-4f78-8f28-f1b587f7a24b",
+      "credentials": {
+        "telegramApi": {
+          "id": "V9l5ud7KO4Nauhq1",
+          "name": "FortiGuard - Alert Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-lite-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        16
+      ],
+      "id": "d9ee05a0-d306-4b4d-bf58-71f7987fa1ea",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "oh1ja4QQyUPf93CI",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Call 'My Sub-workflow'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'My Sub-workflow'": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "63f25ec3-1045-4153-a4f1-60294994ce21",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8933973195b5ab5b4d822fc57153be5324dc1dcebd31cf7d44044262575843b5"
+  },
+  "nodeGroups": [],
+  "id": "CxZajXuMksXW2j2B",
+  "tags": []
+}

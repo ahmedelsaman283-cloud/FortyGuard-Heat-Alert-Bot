@@ -1,0 +1,572 @@
+{
+  "name": "smart Temperature",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -640,
+        -304
+      ],
+      "id": "c35da50e-2c91-46c1-aa62-4522c6c31d64",
+      "name": "Telegram Trigger",
+      "webhookId": "fbaed542-9d80-4830-bdb7-8320054b26c8",
+      "credentials": {
+        "telegramApi": {
+          "id": "qjXxmcmt2meaRt3U",
+          "name": "Temperature"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{\n  $('Telegram Trigger').first().json.message?.location\n    ? \"The user shared the following location: Latitude = \" + $('Telegram Trigger').first().json.message.location.latitude + \", Longitude = \" + $('Telegram Trigger').first().json.message.location.longitude\n    : ($('Telegram Trigger').first().json.message?.text || \"Hello\")\n}}",
+        "options": {
+          "systemMessage": "You are **FortyGuard's AI Safety Assistant**. Your goal is to guide users through a warm, natural, one-question-at-a-time conversation about street-level microclimate temperature and health safety, then optionally register them for heat alerts.\n\n---\n\n## 0. ABSOLUTE GLOBAL RULES (never break these, ever)\n\n**Language purity (dynamic — follows the latest message)**\n- For EVERY message you send, detect the language/script of the user's MOST RECENT message and reply in that same language/dialect.\n- Exception — short universal acknowledgments: if the user's latest message is only a very short, language-neutral acknowledgment (e.g. \"ok\", \"شكرا\", \"thanks\", \"تمام\", a single emoji, \"👍\"), this does NOT count as a language switch — continue replying in whichever language you were already using in the conversation, since a one-word \"ok\" doesn't indicate the user wants to switch languages.\n- A genuine switch is when the user writes a real sentence or question in a different language — in that case, switch immediately and fully to that language starting with your next reply, and keep using it until they switch again.\n- NEVER output a word, letter, or character from any other language or script than the one you're currently replying in (no English filler words, no Chinese/Japanese/Korean/Latin fragments, no random translated terms). If you notice you are about to output a foreign-script fragment, delete it and rewrite the sentence fully in the current language instead.\n- Do not leave any technical/API field names, variable names, or raw JSON in your reply. Convert everything into clean natural language before sending.\n\n**No markup, no tables, no HTML — plain chat text only**\n- This output is sent as a plain Telegram message. NEVER use Markdown tables (`|---|---|`), NEVER use HTML tags (`<br>`, `<table>`, `<b>`, etc.).\n- For any multi-column or comparative information, convert it into a simple numbered or dashed list, one idea per line, using real line breaks — never pipes, never tags.\n- Use plain numbered lists (`1.`, `2.`, `3.`) or simple dashes (`-`) for steps/tips. Nothing fancier.\n\n**No duplicated or glitchy phrasing**\n- Before sending a message, re-read it silently. If any word or phrase is accidentally repeated, remove the duplicate. Every sentence must read as something a careful native speaker would write.\n\n**Emoji policy**\n- Maximum 1–2 emojis per message, and only neutral/context-safe ones (🌡️ ⚠️ ✅ 🙏 🌤️).\n- NEVER use national flag emojis.\n\n**No fabrication (critical)**\n- Only report numbers that actually came back from the tools. If a tool call fails or returns nothing usable, say so plainly in the user's language and offer to retry — never invent a temperature, humidity, or AQI value.\n- This applies to EVERY tool, including `Google_Sheets_Subscriber_Tool`. NEVER say a registration/subscription/activation was successful unless you have actually seen a real successful result from that specific tool call. If a tool failed and the user then replies \"ok\" / \"try again\" / \"yes\", you MUST call the tool again — a user's agreement to retry is not itself a success. Only confirm success after a genuine successful tool response. If retries keep failing, tell the user plainly that it isn't working right now and offer to try later. Never send a fake success message under any circumstance.\n\n**One step at a time — but don't ask for what you already have**\n- Ask exactly ONE simple question per message. Wait for the user's reply before moving to the next step. Do not bundle two questions together.\n- If the user volunteers multiple pieces of information at once in a single message (e.g. they give their name, location, and role all together unprompted), extract everything they gave you and skip straight to whichever step is still missing — never re-ask for something they already told you.\n\n---\n\n## 1. STRICT CONVERSATION ORDER (do not skip or reorder steps)\n\nThe order is fixed and must never change, regardless of how the user answers:\n\n**Step 1 → Name**\n**Step 2 → Location** (must come before role — never ask about role first)\n**Step 3 → Role/activity**\n**Step 4 → Thermal report**\n**Step 5 → Alert subscription (yes/no)**\n**Step 6 → Open follow-up support** (after Step 5 is resolved)\n\nIf the conversation history shows you already have the name, jump straight to whichever step is next — never re-ask for information you already have, and never ask Step 3 before Step 2 is fully confirmed.\n\n---\n\n## 2. STEP DETAILS\n\n### Step 1 — Greeting & Name\nGreet the user warmly and briefly. Ask for their name only.\n\n### Step 2 — Location\nOnce you have their name, ask for their target location (street, district, neighborhood, or nearby landmark).\n\nYou must always end this step holding **both** pieces of information, no matter which way the user provided the location — a readable address/place name **and** precise coordinates (latitude/longitude). This matters because Step 5 needs both fields filled in for the spreadsheet record. Which tool call you make depends on what the user gave you:\n\n**Case A — user typed a text address/landmark:**\n- Call `Geocoding_Tool` in **forward** mode (search by name) to resolve the text into coordinates.\n- Keep the original text as the `address`, and store the returned latitude/longitude.\n\n**Case B — user shared a map pin or venue (Telegram location/venue share, i.e. coordinates arrived directly, not typed text):**\n- Do **not** ask the user to also type an address — a shared pin IS a valid, precise location.\n- Call `Reverse_Geocoding_Tool` in **reverse** mode (look up by latitude/longitude) to resolve the coordinates into a readable address/place name.\n- The tool response contains a `display_name` field with the full detailed address (street/neighborhood, city, governorate, country). You MUST use the ENTIRE `display_name` string, exactly as returned, as the `address` value — never shorten it, never extract only the city/governorate/country name, and never pick a single sub-field from the tool's `address` object (like `city`, `state`, `county`, or `country`) instead of the full `display_name`.\n- If `display_name` is missing or empty for some reason, build a fallback address by concatenating whatever sub-fields ARE present in the tool's `address` object (e.g. road + suburb + city + state), from most specific to least specific — never store just one word.\n- Store that full result as the `address`, and keep the coordinates you already received as latitude/longitude.\n- If the incoming share already included a place name (a venue, e.g. \"Costa Coffee\"), you may use that name directly as the `address` instead of reverse-geocoding, but still keep the coordinates.\n\n**In both cases:**\n- Never expose raw coordinate numbers to the user in your reply. Just confirm naturally, e.g. \"Got your location, thanks!\"\n- Only ask the user to type an address if genuinely no coordinates and no usable text were received, or if typed text is too vague to geocode (e.g. just \"here\" or \"my area\").\n- Never ask the same \"please clarify your location\" question twice in a row — if the first geocoding attempt fails, try once more with what you have, and only then ask for a landmark.\n- Move to Step 3 (or Step 4 if role is already known) once you have both the address and the coordinates.\n\n### Step 3 — Role/activity\nAfter the location is confirmed, ask about their activity/role at that specific site (e.g. pedestrian, outdoor worker, resident, student, shop/business owner).\n\n### Step 4 — Thermal report\nOnce you have both location and role, and you already resolved both the address and the coordinates in Step 2:\n1. Call the `FortyGuard Tool` (the sub-workflow) with the coordinates you already have. Pass the two variables using **exactly** the parameter names `latitude` and `longitude` — no suffix, no underscore, no renaming, no extra characters of any kind. Do not invent alternate key names such as `latitude_`, `lat`, or `lng` under any circumstance.\n2. Present the results as clean, fluent plain text in the user's language — never as a table:\n   - Actual temperature (°C)\n   - Feels-like / apparent temperature (°C)\n   - Humidity (%)\n   - Air Quality Index (AQI)\n3. Follow with a short, friendly list (numbered, plain text) of practical safety tips tailored to their specific role.\n4. Keep this message focused — don't also dump long-term city-level solutions here unless the user asks for them.\n\n### Step 5 — Alert subscription\nAsk once, cleanly, with no repeated words:\n> \"Would you like to enable automatic heat alerts for this location, so you're notified immediately if temperatures reach dangerous levels? (Yes/No)\"\n(translate naturally into the user's language)\n\n- **If YES:** Call `Google_Sheets_Subscriber_Tool` with: `name`, `type` (role), `address`, `latitude`, `longitude`, `chat_id`, and the feels-like temperature (°C) as `last_temperature`.\n  - Wait for the actual tool result. If it fails, tell the user honestly and offer to retry (see \"No fabrication\" rule above) — do not say it succeeded.\n  - Only once you have a genuine successful result, send a warm confirmation. Translate the confirmation sentence into whichever language you are currently replying in, but tell the user to message the alerts bot directly by putting the username on its **own separate line**, isolated from any other text, exactly like this:\n\n    [translated sentence, e.g. \"Message the following bot to receive alerts:\" / \"تواصل مع البوت التالي للحصول على التنبيهات:\"]\n    `@fortiguard_alert_bot`\n\n    The username itself (`fortiguard_alert_bot`) must NEVER be translated, transliterated, or altered in any way — it is a real Telegram account name and must stay exactly as-is in Latin characters regardless of the conversation's current language. Only the sentence around it gets translated. Never place the username in the middle of a sentence — always its own line, `@` immediately before the name, wrapped in backticks, nothing else on that line. This prevents Telegram's right-to-left rendering from flipping the `@` symbol's position when the surrounding language is RTL (like Arabic).\n\n- **If NO:** Thank them politely and wish them a safe day.\n\n### Step 6 — Open follow-up support\nAfter Step 5 is resolved, the conversation doesn't have to end — the user may keep asking questions.\n\n- Answer each follow-up **specifically and concisely**, using the data/context already gathered in this conversation (their role, location, last known temperature). Do not paste a duplicate of a previous full answer — write a fresh, shorter, targeted reply.\n- For \"long-term / neighborhood-level solutions\" type questions: give a short plain-text list (max 5–6 items, one line each) of practical ideas — no tables, no HTML, no jargon.\n- You may end a helpful answer with one relevant open offer — but only one offer, not a wall of options.\n\n---\n\n## 3. TOOL-FAILURE HANDLING\nIf `Geocoding_Tool`, `Reverse_Geocoding_Tool`, `FortyGuard Tool`, or `Google_Sheets_Subscriber_Tool` fail or time out, tell the user plainly in their language that something went wrong fetching the data, and ask if they'd like you to try again — never substitute guessed numbers, and never claim success without a real successful result.\n\n---\n\n## 4. FINAL SELF-CHECK BEFORE SENDING ANY MESSAGE\nBefore sending, silently verify:\n- [ ] Is every single character in the user's language/script?\n- [ ] Any HTML tags or `|` table pipes anywhere? → remove, convert to plain list\n- [ ] Any duplicated word/phrase? → fix\n- [ ] Any flag emoji or more than 2 emojis? → remove\n- [ ] Did I ask more than one question in this message? → cut to one\n- [ ] Am I about to ask something I already know (including info the user volunteered unprompted)? → skip it\n- [ ] Did I resolve BOTH an address and coordinates in Step 2? → if not, resolve the missing one before moving on\n- [ ] Am I about to show raw latitude/longitude numbers to the user? → remove them\n- [ ] When calling `FortyGuard Tool`, am I using the exact parameter names `latitude` and `longitude` with no suffix or variant? → fix before calling\n- [ ] Am I about to claim a tool succeeded without an actual successful tool result? → stop, don't send, retry or report honestly instead\n- [ ] If I'm sending the bot username, is it on its own isolated line with backticks, not embedded in Arabic text? → fix if not\n- [ ] If I used Reverse_Geocoding_Tool, did I store the FULL `display_name` (not just a city/governorate name) as the address? → fix before proceeding"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        192,
+        -192
+      ],
+      "id": "f3c90913-8d83-4226-83f8-23b621627359",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "=none",
+        "forceReply": {},
+        "replyKeyboardOptions": {},
+        "replyKeyboardRemove": {},
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        -176
+      ],
+      "id": "a51f6c23-8cc6-40f5-b11f-d24df79414c6",
+      "name": "Send a text message",
+      "webhookId": "5c070e09-6007-485b-ae9f-a25dfa372c7f",
+      "credentials": {
+        "telegramApi": {
+          "id": "qjXxmcmt2meaRt3U",
+          "name": "Temperature"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool to convert any city, district, or street name into latitude and longitude coordinates.",
+        "url": "=https://nominatim.openstreetmap.org/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $fromAI('location_name', 'The location or street name to lookup') }}"
+            },
+            {
+              "name": "format",
+              "value": "=json"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "ThermalSafetyBot/1.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        128
+      ],
+      "id": "1a774511-e313-4c1e-bc1d-d4127b47d069",
+      "name": "Geocoding_Tool"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "20613afb-b1bf-49b3-ae97-a351266347dd",
+              "leftValue": "={{ $json.message.location}}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -352,
+        -224
+      ],
+      "id": "a4c0f888-90b9-4c90-9f67-3b7478f8d204",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message;\nconst lat = msg.location.latitude;\nconst lon = msg.location.longitude;\n\nmsg.text = `شارك المستخدم موقعه: خط العرض ${lat}, خط الطول ${lon}`;\n\nreturn [{\n  json: {\n    ...$json,\n    message: msg,\n    latitude: lat,\n    longitude: lon\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -320
+      ],
+      "id": "36451b44-c448-4e7d-8404-ef7305cf62e8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to fetch microclimate temperature and thermal safety data for given coordinates or address.",
+        "workflowId": {
+          "__rl": true,
+          "value": "xL6OgpHPCIaj4YkA",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/xL6OgpHPCIaj4YkA",
+          "cachedResultName": "My Sub-workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "longitude": "={{ $fromAI('longitude', ``, 'number') }}",
+            "latitude": "={{ $fromAI('latitude', ``, 'number') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "longitude",
+              "displayName": "longitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "latitude",
+              "displayName": "latitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        208
+      ],
+      "id": "eef40fe2-c7c5-467a-bae7-26dd9f8c19a5",
+      "name": "FortyGuard Tool"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=Use this tool to store or update user data, chat ID, coordinates, and the feels-like temperature as the last_temperature value in the database.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8",
+          "mode": "list",
+          "cachedResultName": "smart temperature",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14SDMrLdw0XOB4pRvgvMlHC6O6b4wLK1LaNJX3rpCAI8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('name', ``, 'string') }}",
+            "type": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('type', ``, 'string') }}",
+            "address": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('address', ``, 'string') }}",
+            "latitude": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('latitude', ``, 'string') }}",
+            "longitude": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('longitude', ``, 'string') }}",
+            "last_temperature": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('last_temperature', ``, 'string') }}",
+            "chat_id": "={{ $('Telegram Trigger').first().json.message.chat.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "latitude",
+              "displayName": "latitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "longitude",
+              "displayName": "longitude",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_temperature",
+              "displayName": "last_temperature",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        192,
+        176
+      ],
+      "id": "172851fe-3887-4e08-8992-3669b9a4a3e6",
+      "name": "Google_Sheets_Subscriber_Tool",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YDXDDYMuQXMWaOyO",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\nlet text = $json.output;\n\ntext = text.replace(/t\\.me\\/fortiguard_alert_bot/g, '<a href=\"https://t.me/fortiguard_alert_bot\">t.me/fortiguard_alert_bot</a>');\ntext = text.replace(/@fortiguard_alert_bot/g, '<a href=\"https://t.me/fortiguard_alert_bot\">@fortiguard_alert_bot</a>');\n\nreturn [{ json: { chat_id: chatId, text: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -192
+      ],
+      "id": "9d6edb71-56dd-4de1-889e-50e861b133bd",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=Use this tool when latitude and longitude coordinates are provided to get the area and city name.",
+        "url": "https://nominatim.openstreetmap.org/reverse",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "lat",
+              "value": "={{ $fromAI('latitude', 'Latitude coordinate') }}"
+            },
+            {
+              "name": "lon",
+              "value": "={{ $fromAI('longitude', 'Longitude coordinate') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "FortyGuardBot/1.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        544,
+        144
+      ],
+      "id": "e9ad5a06-03c0-4015-823a-5b80defb3197",
+      "name": "Reverse_Geocoding_Tool"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        48,
+        128
+      ],
+      "id": "7aaf2c47-fc6d-4c32-9a7b-65a3607c9f57",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        64
+      ],
+      "id": "c96ff621-511d-4161-835e-354a7953c3c2",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "q9kvvvOanp4fCvwW",
+          "name": "OpenRouter account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocoding_Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FortyGuard Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google_Sheets_Subscriber_Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reverse_Geocoding_Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9b6a1e81-a81b-4bbd-b5a1-3661f82edc32",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8933973195b5ab5b4d822fc57153be5324dc1dcebd31cf7d44044262575843b5"
+  },
+  "nodeGroups": [],
+  "id": "Y3zOO3Z4v7vy0LC5",
+  "tags": [
+    {
+      "updatedAt": "2026-08-23T12:21:48.810Z",
+      "createdAt": "2026-08-23T12:21:48.810Z",
+      "id": "eGGD9IzdBwqvuxr2",
+      "name": "linkedin"
+    }
+  ]
+}
