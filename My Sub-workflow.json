@@ -34,7 +34,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"latitude\": {{ parseFloat($json.latitude) || 30.0444 }},\n  \"longitude\": {{ parseFloat($json.longitude) || 31.2357 }},\n  \"temperature\": {{ parseFloat($json.current.temperature_2m) || 35.0 }},\n  \"date_time\": {\n    \"filter_type\": 1,\n    \"start_date\": \"{{ $now.setZone('UTC').toFormat('yyyy-MM-dd') }}\",\n    \"start_time\": \"{{ $now.setZone('UTC').toFormat('HH:00') }}\"\n  }\n}",
+        "jsonBody": "={\n  \"latitude\": {{ parseFloat($json.latitude)}},\n  \"longitude\": {{ parseFloat($json.longitude)}},\n  \"temperature\": {{ parseFloat($json.current.temperature_2m)}},\n  \"date_time\": {\n    \"filter_type\": 1,\n    \"start_date\": \"{{ $now.setZone('UTC').toFormat('yyyy-MM-dd') }}\",\n    \"start_time\": \"{{ $now.setZone('UTC').toFormat('HH:00') }}\"\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -99,7 +99,7 @@
     },
     {
       "parameters": {
-        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $json.latitude || 30.0444 }}&longitude={{ $json.longitude || 31.2357 }}&current=temperature_2m",
+        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $json.latitude}}&longitude={{ $json.longitude}}&current=temperature_2m",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
