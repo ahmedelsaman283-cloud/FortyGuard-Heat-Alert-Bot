@@ -25,7 +25,7 @@ A Telegram bot that:
 - Lets the user subscribe to automatic heat alerts, saving their info to a Google Sheet.
 - Replies fully in the user's language (Arabic/English, dynamically detected).
 
-### 2. Autonomous Monitoring Workflow (`My_workflow_2.json`)
+### 2. Autonomous Monitoring Workflow (`My workflow 2.json`)
 Runs on a schedule (every 15 minutes) and:
 - Reads all subscribed users from the Google Sheet.
 - Fetches current conditions for each subscriber's saved location.
@@ -36,7 +36,7 @@ Runs on a schedule (every 15 minutes) and:
 ### 3. Alert Follow-up Bot (`FortyGuard - Alert Bot Handler.json`)
 A second Telegram bot (the one that sends alerts) that also handles follow-up questions from users after they've received a warning — e.g. "what should I do now?" or "is it safe to keep working?" — using conversation memory so it understands references like "the warning" or "the temperature" without the user repeating context.
 
-### 4. Weather Data Sub-workflow (`My_Sub-workflow.json`)
+### 4. Weather Data Sub-workflow (`My Sub-workflow.json`)
 A shared sub-workflow called by both bots. It fetches a baseline temperature reading from Open-Meteo, then submits it to the FortyGuard API to retrieve full microclimate and environmental parameters (feels-like temperature, humidity, air quality, etc.) for the requested coordinates.
 
 ---
