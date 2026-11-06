@@ -33,7 +33,7 @@ Runs on a schedule (every 15 minutes) and:
 - Sends a proactive warning message directly to the subscriber via Telegram when conditions turn dangerous.
 - Updates the recorded temperature in the sheet after every check, whether or not an alert was sent.
 
-### 3. Alert Follow-up Bot (`FortiGuard - Alert Bot Handler.json`)
+### 3. Alert Follow-up Bot (`FortyGuard - Alert Bot Handler.json`)
 A second Telegram bot (the one that sends alerts) that also handles follow-up questions from users after they've received a warning — e.g. "what should I do now?" or "is it safe to keep working?" — using conversation memory so it understands references like "the warning" or "the temperature" without the user repeating context.
 
 ### 4. Weather Data Sub-workflow (`My_Sub-workflow.json`)
